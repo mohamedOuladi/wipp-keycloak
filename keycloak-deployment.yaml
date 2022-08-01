@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wipp-keycloak
+  labels:
+    component: wipp-keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: wipp-keycloak
+  template:
+    metadata:
+      labels:
+        component: wipp-keycloak
+    spec:
+      containers:
+      - args:
+        - -b 0.0.0.0 -Dkeycloak.import=/opt/jboss/keycloak/imports/realm.json
+        env:
+        - name: DB_ADDR
+          value: postgres-keycloak
+        - name: DB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: wipp-keycloak-postgres
+              key: POSTGRES_DB
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wipp-keycloak-postgres
+              key: POSTGRES_PASSWORD
+        - name: DB_SCHEMA
+          valueFrom:
+            secretKeyRef:
+              name: wipp-keycloak
+              key: KEYCLOAK_DB_SCHEMA
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: wipp-keycloak-postgres
+              key: POSTGRES_USER
+        - name: DB_VENDOR
+          valueFrom:
+            secretKeyRef:
+              name: wipp-keycloak
+              key: KEYCLOAK_DB_VENDOR
+        - name: KEYCLOAK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wipp-keycloak
+              key: KEYCLOAK_PASSWORD
+        - name: KEYCLOAK_USER
+          valueFrom:
+            secretKeyRef:
+              name: wipp-keycloak
+              key: KEYCLOAK_USER
+        - name:  PROXY_ADDRESS_FORWARDING
+          value: "true"
+        - name: KEYCLOAK_FRONTEND_URL
+          value: "https://wipp-keycloak.ci.aws.labshare.org/auth"
+        image: quay.io/keycloak/keycloak:11.0.2
+        name: keycloak
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: https
+          containerPort: 8443
+        readinessProbe:
+          httpGet:
+            path: /auth/realms/master
+            port: 8080
+        volumeMounts:
+        - name: keycloak-realm-volume
+          mountPath: /opt/jboss/keycloak/imports/realm.json
+          subPath: realm.json
+      volumes:
+      - name: keycloak-realm-volume
+        configMap:
+          name: keycloak-realm-config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wipp-keycloak-pv-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi

@@ -1,0 +1,22 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: wipp-keycloak-ingress
+  annotations:
+      kubernetes.io/ingress.class: kong
+      kubernetes.io/tls-acme: "true"
+      cert-manager.io/cluster-issuer: letsencrypt-staging
+      konghq.com/protocols: https
+spec:
+  tls:
+  - hosts:
+      - wipp-keycloak.ci.aws.labshare.org
+    secretName: wipp-keycloak
+  rules:
+  - host: wipp-keycloak.ci.aws.labshare.org
+    http:
+      paths:
+      - backend:
+          serviceName: wipp-keycloak
+          servicePort: 8080
+        path: /

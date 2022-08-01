@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-keycloak
+spec:
+  type: ClusterIP
+  selector:
+    component: postgres-keycloak
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-keycloak-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: postgres-keycloak
+  template:
+    metadata:
+      labels:
+        component: postgres-keycloak
+    spec:
+      volumes:
+        - name: postgres-keycloak
+          persistentVolumeClaim:
+            claimName: postgres-keycloak-pvc
+      containers:
+        - name: postgres
+          image: postgres:9.6
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-keycloak
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: wipp-keycloak-postgres
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wipp-keycloak-postgres
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: wipp-keycloak-postgres
+                  key: POSTGRES_DB
